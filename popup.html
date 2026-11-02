@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>HTTP Request Sender</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>HTTP Request Sender</h1>
+
+    <!-- 第一行：Method + URL -->
+    <div class="row">
+      <select id="method">
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="PATCH">PATCH</option>
+        <option value="DELETE">DELETE</option>
+        <option value="HEAD">HEAD</option>
+        <option value="OPTIONS">OPTIONS</option>
+      </select>
+      <input type="text" id="url" placeholder="https://api.example.com/path" />
+    </div>
+
+    <!-- Headers -->
+    <div class="section-title">
+      <span>Headers</span>
+      <button id="add-header" class="small-btn" type="button">+ 添加</button>
+    </div>
+    <div id="headers-list"></div>
+
+    <!-- Body -->
+    <div class="section-title"><span>Body</span></div>
+    <textarea id="body" rows="6" placeholder='{"key": "value"}'></textarea>
+
+    <button id="send" class="send-btn">Send</button>
+
+    <!-- Response -->
+    <div class="section-title">
+      <span>Response</span>
+      <span id="status" class="status"></span>
+      <span id="time" class="status"></span>
+    </div>
+    <textarea id="response" rows="10" readonly></textarea>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

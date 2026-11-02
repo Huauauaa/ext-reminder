@@ -11,7 +11,7 @@ VERSION=$(/usr/bin/python3 -c "import json;print(json.load(open('manifest.json')
 OUT="dist/${NAME}-v${VERSION}.zip"
 
 # 用 manifest 里出现的文件白名单来打包，避免把 README / 脚本 / dist 自己打进去
-FILES=(manifest.json popup.html popup.css popup.js)
+FILES=(manifest.json popup.html popup.css popup.js curl-parser.js)
 for f in "${FILES[@]}"; do
   [[ -e "$f" ]] || { echo "缺少文件: $f" >&2; exit 1; }
 done

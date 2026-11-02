@@ -1,5 +1,77 @@
 const $ = (id) => document.getElementById(id);
 
+// ---------- cURL 导入 ----------
+
+const importPanel = $("import-panel");
+
+$("toggle-import").addEventListener("click", () => {
+  const isHidden = importPanel.classList.toggle("hidden");
+  if (!isHidden) $("curl-input").focus();
+});
+
+$("clear-curl").addEventListener("click", () => {
+  $("curl-input").value = "";
+  $("import-msg").textContent = "";
+  $("import-warnings").innerHTML = "";
+  $("curl-input").focus();
+});
+
+$("do-import").addEventListener("click", applyCurlImport);
+
+// Cmd/Ctrl + Enter 直接导入
+$("curl-input").addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    e.preventDefault();
+    applyCurlImport();
+  }
+});
+
+function applyCurlImport() {
+  const msg = $("import-msg");
+  const warnBox = $("import-warnings");
+  warnBox.innerHTML = "";
+
+  try {
+    const result = parseCurl($("curl-input").value);
+    fillForm(result);
+
+    msg.textContent = result.warnings.length
+      ? `已填入表单（${result.warnings.length} 条提示）`
+      : "已填入表单";
+    msg.className = "status ok";
+
+    result.warnings.forEach((w) => {
+      const line = document.createElement("div");
+      line.textContent = w;
+      warnBox.appendChild(line);
+    });
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = "status err";
+  }
+}
+
+/** 把解析结果写回表单：URL / Method / Headers 行 / Body */
+function fillForm({ url, method, headers, body }) {
+  $("url").value = url || "";
+
+  const select = $("method");
+  const m = (method || "GET").toUpperCase();
+  if (![...select.options].some((opt) => opt.value === m)) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    select.appendChild(opt);
+  }
+  select.value = m;
+
+  $("headers-list").innerHTML = "";
+  headers.forEach(([key, value]) => addHeaderRow(key, value));
+  if (!headers.length) addHeaderRow();
+
+  $("body").value = body || "";
+}
+
 // ---------- Headers 行管理 ----------
 
 function addHeaderRow(key = "", value = "") {

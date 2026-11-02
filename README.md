@@ -12,6 +12,7 @@
 | --- | --- |
 | 请求方法 | GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS |
 | URL 输入 | 支持任意 http/https 地址 |
+| **cURL 导入** | 粘贴 curl 命令一键回填 URL / Method / Headers / Body，无法识别的参数以提示列出 |
 | 自定义 Headers | 点「+ 添加」可动态增删任意多行 key/value |
 | 请求体 Body | 多行文本域，GET / HEAD 自动不携带 body |
 | 一键发送 | Send 按钮，发送中禁用并显示 `Sending...` |
@@ -26,12 +27,14 @@
 ```
 ext-reminder/           # 项目根目录 = 扩展根目录，加载扩展时直接选它
 ├── manifest.json     # 扩展清单（Manifest V3），声明 popup 与 host 权限
-├── popup.html        # 弹窗结构：方法选择、URL、Header 行容器、Body、响应区
+├── popup.html        # 弹窗结构：cURL 导入、方法选择、URL、Header 行容器、Body、响应区
 ├── popup.css         # 弹窗样式（深色主题，宽度 480px）
-├── popup.js          # 全部逻辑：Header 行增删、请求收集、fetch、响应渲染
+├── popup.js          # 弹窗逻辑：cURL 导入回填、Header 行增删、请求收集、fetch、响应渲染
+├── curl-parser.js    # cURL 命令解析器（纯函数，浏览器/Node 通用，可单测）
 ├── icons/            # 扩展图标（16/32/48/128）
 ├── scripts/
-│   └── make_icons.py # 图标生成脚本（Pillow，超采样抗锯齿）
+│   ├── make_icons.py       # 图标生成脚本（Pillow，超采样抗锯齿）
+│   └── test_curl_parser.js # curl 解析器单元测试（node 运行）
 ├── package.sh        # 一键打包 zip 脚本，产物输出到 dist/
 ├── dist/             # 打包产物（执行 package.sh 后生成）
 ├── .gitignore        # 忽略 dist/、*.pem、*.crx
@@ -151,11 +154,36 @@ ext-reminder/           # 项目根目录 = 扩展根目录，加载扩展时直
 
 5. 点 **Send**，在响应里能看到回显的 headers 与 body
 
-### 3. 删掉某一行 Header
+### 3. 从 cURL 一键导入
+
+从浏览器 DevTools（Network → 右键请求 → **Copy as cURL**）、终端历史或文档里复制 curl 命令，然后：
+
+1. 点顶部 **粘贴 cURL** 展开导入面板（再次点可收起）
+2. 粘贴命令，点 **填入表单**（或按 `Cmd/Ctrl + Enter`）
+3. URL / Method / Headers / Body 自动回填，直接点 **Send** 即可发送
+
+解析器支持绝大多数日常写法：
+
+```bash
+curl 'https://api.example.com/users' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer xxx' \
+  --data-raw '{"name": "harvey"}'
+```
+
+- 自动推断方法：`-X` 优先，其次 `-I` → HEAD、有 `-d` → POST，否则 GET
+- `-u user:pass` 转成 `Authorization: Basic ...`；`-b`/`-A`/`-e` 分别转成 Cookie / User-Agent / Referer 头
+- `--json` 自动补 `Content-Type` 与 `Accept`；`-G` 把 `-d` 参数转为 query string
+- 支持单双引号、`$'...'`、行尾 `\` 续行、`--flag=value` 写法，管道后面的命令（`| jq .`）自动截断
+- `-d @file`、`-F`（multipart）、`-T`（上传）无法支持，会在面板下方以黄色提示列出，不会静默丢数据
+- 命令没写协议时自动补全：`localhost` / `127.0.0.1` 补 `http://`，其余补 `https://`
+
+### 4. 删掉某一行 Header
 
 点击该行右侧的红色 **✕**。
 
-### 4. 常见字段速查
+### 5. 常见字段速查
 
 - **Headers 的 key 区分大小写吗？** HTTP 头本身不区分大小写，但这里不做归一化，按你输入的原样发送。
 - **key 为空的行会被忽略**，value 可以为空。
@@ -179,11 +207,23 @@ popup 是一个独立页面，可以像普通网页一样调试：
 
 ### 代码地图
 
-`popup.js` 分三块，读起来很快：
+`popup.js` 分四块，读起来很快：
 
-1. **`addHeaderRow(key, value)`** —— 动态创建一行 Header 输入（两个 input + 一个删除按钮）
-2. **`collectHeaders()`** —— 遍历所有行，跳过空 key，收敛成 `{ key: value }` 对象
-3. **Send 点击处理** —— 组装 `fetch` 的 `options`，计时、发送、渲染响应；`try/catch` 捕获网络错误并把异常文本写进响应区
+1. **cURL 导入** —— 面板开合、`applyCurlImport()` 调解析器、`fillForm()` 把结果写回表单
+2. **`addHeaderRow(key, value)`** —— 动态创建一行 Header 输入（两个 input + 一个删除按钮）
+3. **`collectHeaders()`** —— 遍历所有行，跳过空 key，收敛成 `{ key: value }` 对象
+4. **Send 点击处理** —— 组装 `fetch` 的 `options`，计时、发送、渲染响应；`try/catch` 捕获网络错误并把异常文本写进响应区
+
+`curl-parser.js` 是独立的纯函数模块（不依赖任何扩展 API），被 popup 以 `<script>` 引入后暴露全局 `parseCurl`，同时在 Node 里可以直接 `require` 跑单元测试。
+
+### 测试
+
+```bash
+node scripts/test_curl_parser.js
+# => 结果：40 通过 / 0 失败
+```
+
+改了解析器请跑一遍测试；新增支持写法时先在测试里补一个用例。
 
 ### 权限模型
 
@@ -213,8 +253,7 @@ popup 是一个独立页面，可以像普通网页一样调试：
 ## 可能的后续迭代
 
 - [ ] 用 `chrome.storage.local` 记住上次填写的 URL / Headers / Body
-- [ ] Header 行支持按 `:` 粘贴批量导入（类似 curl 的 `-H`）
 - [ ] 展示响应 headers 与响应耗时拆分（TTFB / 总耗时）
 - [ ] 用 `AbortController` 加超时与取消按钮
-- [ ] 支持从 curl 命令一键导入
 - [ ] 请求历史 / 收藏列表
+- [ ] cURL 导出（把当前表单反向生成 curl 命令）

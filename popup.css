@@ -93,6 +93,47 @@ textarea:focus, input:focus, select:focus {
   border-color: #569cd6;
 }
 
+.small-btn.primary {
+  background: #0e639c;
+  border-color: #0e639c;
+  color: #fff;
+}
+
+.small-btn.primary:hover {
+  background: #1177bb;
+}
+
+.hidden {
+  display: none;
+}
+
+#import-panel textarea {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.import-actions .small-btn {
+  margin-left: 0;
+}
+
+.warn-list {
+  font-size: 11px;
+  color: #dcdcaa;
+  line-height: 1.5;
+}
+
+.warn-list div::before {
+  content: "! ";
+  color: #e2c08d;
+}
+
 .remove-btn {
   background: transparent;
   border: none;

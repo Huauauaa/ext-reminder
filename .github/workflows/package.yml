@@ -1,0 +1,40 @@
+# 自动打包：push 到 main 或手动触发时产出 zip Artifact；
+# 推送 v* tag（如 v1.0.1）时额外创建 GitHub Release 并附上 zip。
+name: Package
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 打包 zip（复用 package.sh）
+        run: |
+          chmod +x package.sh
+          ./package.sh
+
+      - name: 上传 Artifact（每次构建都生成，供直接下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: http-request-sender-zip
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: 发布 Release（仅 v* tag 触发）
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

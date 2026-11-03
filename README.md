@@ -104,6 +104,28 @@ ext-reminder/           # 项目根目录 = 扩展根目录，加载扩展时直
 1. 修改 `manifest.json` 里的 `version`（Chrome 要求严格递增，最多 4 段数字，如 `1.0.1`）
 2. 重新执行 `./package.sh`，得到新文件名的 zip
 
+### GitHub Actions 自动打包（CI）
+
+仓库自带 `.github/workflows/package.yml`，在 GitHub 上自动完成打包，无需本地环境：
+
+| 触发方式 | 产出 |
+| --- | --- |
+| push 到 `main` | Actions 页面生成 Artifact `http-request-sender-zip`，随时可下载 |
+| 在 Actions 页面手动 Run workflow | 同上 |
+| 推送 `v*` tag（如 `v1.0.1`） | 额外创建一个 GitHub Release，zip 挂在附件里 |
+
+典型发布流程：
+
+```bash
+# 1. 改完代码、更新 manifest.json 里的 version
+git commit -am "release: v1.0.1"
+git tag v1.0.1
+git push origin main v1.0.1
+# 2. 等 Actions 跑完，仓库 Releases 页即出现带 zip 的 v1.0.1
+```
+
+说明：workflow 里 `chmod +x package.sh` 是因为 git 只保留了本地执行位，CI 环境里重新赋权一次最稳妥。
+
 ### 打包 .crx（本地/企业场景）
 
 1. `chrome://extensions/` → 打开开发者模式 → 点 **打包扩展程序**
